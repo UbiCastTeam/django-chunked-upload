@@ -2,13 +2,13 @@ from optparse import make_option
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext as _
 
 from chunked_upload.settings import EXPIRATION_DELTA
 from chunked_upload.models import ChunkedUpload
 from chunked_upload.constants import UPLOADING, COMPLETE
 
-prompt_msg = _(u'Do you want to delete {obj}?')
+prompt_msg = _('Do you want to delete {obj}?')
 
 
 class Command(BaseCommand):
@@ -35,7 +35,7 @@ class Command(BaseCommand):
 
         for chunked_upload in qs:
             if interactive:
-                prompt = prompt_msg.format(obj=chunked_upload) + u' (y/n): '
+                prompt = prompt_msg.format(obj=chunked_upload) + ' (y/n): '
                 answer = raw_input(prompt).lower()
                 while answer not in ('y', 'n'):
                     answer = raw_input(prompt).lower()

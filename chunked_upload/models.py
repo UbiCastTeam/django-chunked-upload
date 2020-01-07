@@ -57,7 +57,7 @@ class AbstractChunkedUpload(models.Model):
             storage.delete(path)
 
     def __str__(self):
-        return u'<%s - upload_id: %s - bytes: %s - status: %s>' % (
+        return '<%s - upload_id: %s - bytes: %s - status: %s>' % (
             self.filename, self.upload_id, self.offset, self.status)
 
     def append_chunk(self, chunk, chunk_size=None, save=True):
