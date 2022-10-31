@@ -195,6 +195,10 @@ class ChunkedUploadView(ChunkedUploadBaseView):
             start = int(match.group('start'))
             end = int(match.group('end'))
             total = int(match.group('total'))
+            if start > end:
+                raise ChunkedUploadError(
+                    status=http_status.HTTP_400_BAD_REQUEST,
+                    detail='The content range start must be lower than end')
         elif self.fail_if_no_header:
             raise ChunkedUploadError(status=http_status.HTTP_400_BAD_REQUEST,
                                      detail='Error in request headers')
@@ -203,6 +207,12 @@ class ChunkedUploadView(ChunkedUploadBaseView):
             start = 0
             end = chunk.size - 1
             total = chunk.size
+
+        if end > total:
+            raise ChunkedUploadError(
+                status=http_status.HTTP_400_BAD_REQUEST,
+                detail='End offset must be lower than total size'
+            )
 
         chunk_size = end - start + 1
         max_bytes = self.get_max_bytes(request)
