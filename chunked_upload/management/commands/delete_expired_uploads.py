@@ -1,5 +1,3 @@
-from optparse import make_option
-
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.utils.translation import gettext as _
@@ -18,33 +16,36 @@ class Command(BaseCommand):
 
     help = 'Deletes chunked uploads that have already expired.'
 
-    option_list = BaseCommand.option_list + (
-        make_option('--interactive',
-                    action='store_true',
-                    dest='interactive',
-                    default=False,
-                    help='Prompt confirmation before each deletion.'),
-    )
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--interactive',
+            action='store_true',
+            dest='interactive',
+            default=False,
+            help='Prompt confirmation before each deletion.')
 
     def handle(self, *args, **options):
         interactive = options.get('interactive')
 
         count = {UPLOADING: 0, COMPLETE: 0}
+        deleted = []
         qs = self.model.objects.all()
         qs = qs.filter(created_on__lt=(timezone.now() - EXPIRATION_DELTA))
 
         for chunked_upload in qs:
             if interactive:
                 prompt = prompt_msg.format(obj=chunked_upload) + ' (y/n): '
-                answer = raw_input(prompt).lower()
+                answer = input(prompt).lower()
                 while answer not in ('y', 'n'):
-                    answer = raw_input(prompt).lower()
+                    answer = input(prompt).lower()
                 if answer == 'n':
                     continue
 
             count[chunked_upload.status] += 1
+            deleted.append(chunked_upload.upload_id)
             # Deleting objects individually to call delete method explicitly
             chunked_upload.delete()
 
-        print('%i complete uploads were deleted.' % count[COMPLETE])
-        print('%i incomplete uploads were deleted.' % count[UPLOADING])
+        self.stdout.write(f'Deleted upload ids: {deleted}.')
+        self.stdout.write(f'{count[COMPLETE]} complete uploads were deleted.')
+        self.stdout.write(f'{count[UPLOADING]} incomplete uploads were deleted.')
