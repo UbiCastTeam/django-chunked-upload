@@ -161,6 +161,12 @@ class ChunkedUploadView(ChunkedUploadBaseView):
             raise ChunkedUploadError(status=http_status.HTTP_400_BAD_REQUEST,
                                      detail=error_msg % 'complete')
 
+    def validate_chunk_data(self, chunked_upload, chunk):
+        """
+        Check if the chunk data are correct
+        (for example, with an antivirus check).
+        """
+
     def get_response_data(self, chunked_upload, request):
         """
         Data for the response. Should return a dictionary-like object.
@@ -229,6 +235,8 @@ class ChunkedUploadView(ChunkedUploadBaseView):
         if chunk.size != chunk_size:
             raise ChunkedUploadError(status=http_status.HTTP_400_BAD_REQUEST,
                                      detail="File size doesn't match headers")
+
+        self.validate_chunk_data(chunked_upload, chunk)
 
         chunked_upload.append_chunk(chunk, chunk_size=chunk_size, save=False)
 
