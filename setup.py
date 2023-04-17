@@ -1,9 +1,16 @@
 #!/usr/bin/env python
 
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+from setuptools import setup
+
+INSTALL_REQUIRES = [
+    'django >= 4.1',
+]
+
+EXTRAS_REQUIRE = {
+    'dev': [
+        'flake8',
+    ],
+}
 
 with open('VERSION.txt', 'r') as v:
     version = v.read().strip()
@@ -17,15 +24,21 @@ download_url = (
 
 setup(
     name='django-chunked-upload',
-    packages=['chunked_upload', 'chunked_upload.migrations', 'chunked_upload.management', 'chunked_upload.management.commands'],
+    packages=[
+        'chunked_upload',
+        'chunked_upload.migrations',
+        'chunked_upload.management',
+        'chunked_upload.management.commands',
+    ],
     version=version,
     description=('Upload large files to Django in multiple chunks, with the '
                  'ability to resume if the upload is interrupted.'),
     long_description=readme,
     author='Julio M Alegria',
     author_email='juliomalegria@gmail.com',
+    license='MIT-Zero',
     url='https://github.com/juliomalegria/django-chunked-upload',
     download_url=download_url % version,
-    install_requires=[],
-    license='MIT-Zero'
+    install_requires=INSTALL_REQUIRES,
+    extras_require=EXTRAS_REQUIRE,
 )

@@ -25,7 +25,8 @@ class ChunkedUploadBaseView(View):
 
     # Has to be a ChunkedUpload subclass
     model = ChunkedUpload
-    user_field_name = 'user'  # the field name that point towards the AUTH_USER in ChunkedUpload class or its subclasses
+    # The field name that point towards the AUTH_USER in ChunkedUpload class or its subclasses
+    user_field_name = 'user'
 
     def get_queryset(self, request):
         """
@@ -33,7 +34,11 @@ class ChunkedUploadBaseView(View):
         By default, users can only continue uploading their own uploads.
         """
         queryset = self.model.objects.all()
-        if hasattr(self.model, self.user_field_name) and hasattr(request, 'user') and is_authenticated(request.user):
+        if (
+            hasattr(self.model, self.user_field_name)
+            and hasattr(request, 'user')
+            and is_authenticated(request.user)
+        ):
             queryset = queryset.filter(**{self.user_field_name: request.user})
         return queryset
 
@@ -125,7 +130,11 @@ class ChunkedUploadView(ChunkedUploadBaseView):
         Should return a dictionary-like object.
         """
         attrs = {}
-        if hasattr(self.model, self.user_field_name) and hasattr(request, 'user') and is_authenticated(request.user):
+        if (
+            hasattr(self.model, self.user_field_name)
+            and hasattr(request, 'user')
+            and is_authenticated(request.user)
+        ):
             attrs[self.user_field_name] = request.user
         return attrs
 
