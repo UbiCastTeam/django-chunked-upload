@@ -9,27 +9,36 @@ INSTALL_REQUIRES = [
 EXTRAS_REQUIRE = {
     'dev': [
         'flake8',
+        'pytest',
+        'pytest-cov',
     ],
 }
 
-with open('VERSION.txt', 'r') as v:
-    version = v.read().strip()
+try:
+    with open('VERSION.txt', 'r') as v:
+        version = v.read().strip()
 
-with open('README.rst', 'r') as r:
-    readme = r.read()
+    with open('README.rst', 'r') as r:
+        readme = r.read()
 
-download_url = (
-    'https://github.com/juliomalegria/django-chunked-upload/tarball/%s'
-)
-
-setup(
-    name='django-chunked-upload',
-    packages=[
+    packages = [
         'chunked_upload',
         'chunked_upload.migrations',
         'chunked_upload.management',
         'chunked_upload.management.commands',
-    ],
+    ]
+except FileNotFoundError:
+    # Case when installing dependencies with Docker
+    version = '0'
+
+    readme = ''
+
+    packages = []
+
+
+setup(
+    name='django-chunked-upload',
+    packages=packages,
     version=version,
     description=('Upload large files to Django in multiple chunks, with the '
                  'ability to resume if the upload is interrupted.'),
@@ -38,7 +47,6 @@ setup(
     author_email='juliomalegria@gmail.com',
     license='MIT-Zero',
     url='https://github.com/juliomalegria/django-chunked-upload',
-    download_url=download_url % version,
     install_requires=INSTALL_REQUIRES,
     extras_require=EXTRAS_REQUIRE,
 )

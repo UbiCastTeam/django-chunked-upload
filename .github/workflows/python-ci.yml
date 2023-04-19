@@ -29,3 +29,6 @@ jobs:
     - name: Lint code with Python ${{ matrix.python-version }}
       run: |
         make lint_local
+    - name: Test code with Python ${{ matrix.python-version }}
+      run: |
+        make test_local
