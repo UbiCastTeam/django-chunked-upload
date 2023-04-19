@@ -1,5 +1,5 @@
-import hashlib
 import uuid
+from pathlib import Path
 
 from django.db import models
 from django.conf import settings
@@ -43,15 +43,6 @@ class AbstractChunkedUpload(models.Model):
     def expired(self):
         return self.expires_on <= timezone.now()
 
-    @property
-    def md5(self):
-        if getattr(self, '_md5', None) is None:
-            md5 = hashlib.md5()
-            for chunk in self.file.chunks():
-                md5.update(chunk)
-            self._md5 = md5.hexdigest()
-        return self._md5
-
     def delete(self, delete_file=True, *args, **kwargs):
         if self.file:
             storage, path = self.file.storage, self.file.path
@@ -63,22 +54,20 @@ class AbstractChunkedUpload(models.Model):
         return '<%s - upload_id: %s - bytes: %s - status: %s>' % (
             self.filename, self.upload_id, self.offset, self.status)
 
-    def append_chunk(self, chunk, chunk_size=None, save=True):
+    def append_chunk(self, chunk, save=True):
         self.file.close()
         with open(self.file.path, mode='ab') as file_obj:  # mode = append+binary
             # We can use .read() safely because chunk is already in memory
             file_obj.write(chunk.read())
-
-        if chunk_size is not None:
-            self.offset += chunk_size
-        elif hasattr(chunk, 'size'):
-            self.offset += chunk.size
-        else:
-            self.offset = self.file.size
-        self._md5 = None  # Clear cached md5
+        self.offset += chunk.size
         if save:
-            self.save()
+            self.save(update_fields=['offset'])
         self.file.close()  # Flush
+
+    def get_size(self):
+        if self.file:
+            return Path(self.file.path).stat().st_size
+        return 0
 
     def get_uploaded_file(self):
         self.file.close()

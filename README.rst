@@ -39,7 +39,7 @@ Typical usage
 
     {"my_file": <File>}
 
-2. In return, server with response with the ``upload_id``, the current ``offset`` and the when will the upload expire (``expires``). Example:
+2. In return, server will respond with the ``upload_id``, the current ``offset`` and the when will the upload expire (``expires``). Example:
 
 ::
 
@@ -60,16 +60,16 @@ Typical usage
 
 4. Server will continue responding with the ``upload_id``, the current ``offset`` and the expiration date (``expires``).
 
-5. Finally, when upload is completed, a POST request is sent to the url linked to ``ChunkedUploadCompleteView`` (or any subclass). This request must include the ``upload_id`` and the ``md5`` checksum (hex). Example:
+5. Finally, when upload is completed, a POST request is sent to the url linked to ``ChunkedUploadCompleteView`` (or any subclass). This request must include the ``upload_id`` and optionaly the ``expected_size``. Example:
 
 ::
 
     {
         "upload_id": "5230ec1f59d1485d9d7974b853802e31",
-        "md5": "fc3ff98e8c6a0d3087d515c0473f8677"
+        "expected_size": 1548
     }
 
-6. If everything is OK, server will response with status code 200 and the data returned in the method ``get_response_data`` (if any).
+6. If everything is OK, server will respond the ``size_checked`` (boolean) to indicate if the size was checked.
 
 Possible error responses:
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -81,7 +81,8 @@ Possible error responses:
 * Request does not contain ``Content-Range`` header. Server responds 400 (Bad request).
 * Size of file exceeds limit (if specified).  Server responds 400 (Bad request).
 * Offsets does not match.  Server responds 400 (Bad request).
-* ``md5`` checksums does not match. Server responds 400 (Bad request).
+* File is being written by another request.  Server responds 400 (Bad request).
+* Expected file size does not match. Server responds 400 (Bad request).
 
 Settings
 --------

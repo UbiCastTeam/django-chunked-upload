@@ -1,19 +1,11 @@
+import os
 import time
-import os.path
 from datetime import timedelta
-from django.utils.module_loading import import_string
-from django.conf import settings
 
-try:
-    from django.core.serializers.json import DjangoJSONEncoder
-except ImportError:
-    try:
-        # Deprecated class name (for backwards compatibility purposes)
-        from django.core.serializers.json import (
-            DateTimeAwareJSONEncoder as DjangoJSONEncoder
-        )
-    except ImportError:
-        raise ImportError('Dude! what version of Django are you using?')
+from django.conf import settings
+from django.core.serializers.json import DjangoJSONEncoder
+from django.utils.module_loading import import_string
+
 
 # How long after creation the upload will expire
 DEFAULT_EXPIRATION_DELTA = timedelta(days=1)
@@ -34,8 +26,6 @@ def default_upload_to(instance, filename):
 UPLOAD_TO = getattr(settings, 'CHUNKED_UPLOAD_TO', default_upload_to)
 
 # Storage system
-
-
 try:
     STORAGE = getattr(settings, 'CHUNKED_UPLOAD_STORAGE_CLASS', lambda: None)()
 except TypeError:
