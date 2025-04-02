@@ -278,7 +278,7 @@ class ChunkedUploadCompleteView(ChunkedUploadBaseView):
     define what to do when upload is complete.
     """
 
-    def on_completion(self, uploaded_file, request):
+    def on_completion(self, chunked_upload, request):
         """
         Placeholder method to define what to do when upload is complete.
         """
@@ -339,7 +339,7 @@ class ChunkedUploadCompleteView(ChunkedUploadBaseView):
         chunked_upload.status = COMPLETE
         chunked_upload.completed_on = timezone.now()
         self._save(chunked_upload)
-        self.on_completion(chunked_upload.get_uploaded_file(), request)
+        self.on_completion(chunked_upload, request)
 
         return Response(
             self.get_response_data(chunked_upload, request),

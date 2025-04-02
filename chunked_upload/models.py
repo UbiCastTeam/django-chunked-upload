@@ -3,7 +3,6 @@ from pathlib import Path
 
 from django.db import models
 from django.conf import settings
-from django.core.files.uploadedfile import UploadedFile
 from django.utils import timezone
 
 from .settings import (
@@ -68,12 +67,6 @@ class AbstractChunkedUpload(models.Model):
         if self.file:
             return Path(self.file.path).stat().st_size
         return 0
-
-    def get_uploaded_file(self):
-        self.file.close()
-        self.file.open(mode='rb')  # mode = read+binary
-        return UploadedFile(file=self.file, name=self.filename,
-                            size=self.offset)
 
     class Meta:
         abstract = True
