@@ -1,0 +1,47 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=77.0"]
+
+[project]
+name = "django-chunked-upload"
+description = "Upload large files to Django in multiple chunks, with the ability to resume if the upload is interrupted."
+version = "3.0.0"
+authors = [{name = "Julio M Alegria", email = "juliomalegria@gmail.com"}]
+license = "MIT-0"
+license-files = ["LICENSE.txt"]
+readme = "README.rst"
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Other Environment",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Utilities",
+]
+requires-python = ">=3.9"
+dependencies = [
+  "django >= 4.2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "flake8",
+  "pytest",
+  "pytest-cov",
+]
+
+[project.urls]
+Repository = "https://github.com/UbiCastTeam/django-chunked-upload"
+
+[tool.setuptools]
+packages = [
+  "chunked_upload",
+  "chunked_upload.migrations",
+  "chunked_upload.management",
+  "chunked_upload.management.commands",
+]
+include-package-data = false
+
+[tool.coverage.run]
+source_dirs = ["chunked_upload"]

@@ -4,6 +4,7 @@ RUN apk add make sqlite
 
 WORKDIR /tmp
 
-COPY setup.py setup.py
+COPY chunked_upload chunked_upload
+COPY pyproject.toml pyproject.toml
 RUN pip3 install --no-cache-dir -e '.[dev]'
-RUN rm setup.py
+RUN rm -r /tmp/*
