@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.module_loading import import_string
+from django.core.files.storage import FileSystemStorage
 
 
 # How long after creation the upload will expire
@@ -26,10 +27,13 @@ def default_upload_to(instance, filename):
 UPLOAD_TO = getattr(settings, 'CHUNKED_UPLOAD_TO', default_upload_to)
 
 # Storage system
-try:
-    STORAGE = getattr(settings, 'CHUNKED_UPLOAD_STORAGE_CLASS', lambda: None)()
-except TypeError:
-    STORAGE = import_string(getattr(settings, 'CHUNKED_UPLOAD_STORAGE_CLASS', lambda: None))()
+if hasattr(settings, 'CHUNKED_UPLOAD_STORAGE'):
+    if isinstance(settings.CHUNKED_UPLOAD_STORAGE, str):
+        STORAGE = import_string(settings.CHUNKED_UPLOAD_STORAGE)
+    else:
+        STORAGE = settings.CHUNKED_UPLOAD_STORAGE
+else:
+    STORAGE = FileSystemStorage()
 
 # Function used to encode response data. Receives a dict and return a string
 DEFAULT_ENCODER = DjangoJSONEncoder().encode

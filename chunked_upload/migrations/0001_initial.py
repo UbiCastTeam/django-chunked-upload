@@ -30,6 +30,7 @@ class Migration(migrations.Migration):
                     unique=True)),
                 ('file', models.FileField(
                     max_length=255,
+                    storage=chunked_upload.models.get_storage,
                     upload_to=chunked_upload.settings.UPLOAD_TO)),
                 ('filename', models.CharField(
                     max_length=255)),

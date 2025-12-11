@@ -5,7 +5,7 @@ requires = ["setuptools>=77.0"]
 [project]
 name = "django-chunked-upload"
 description = "Upload large files to Django in multiple chunks, with the ability to resume if the upload is interrupted."
-version = "3.0.0"
+version = "3.1.0"
 authors = [{name = "Julio M Alegria", email = "juliomalegria@gmail.com"}]
 license = "MIT-0"
 license-files = ["LICENSE.txt"]

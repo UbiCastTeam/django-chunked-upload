@@ -16,6 +16,14 @@ def generate_upload_id():
     return uuid.uuid4().hex
 
 
+def get_storage():
+    """
+    This function is used to avoid having to make a migration on the model
+    if the storage setting is customized.
+    """
+    return STORAGE
+
+
 class AbstractChunkedUpload(models.Model):
     """
     Base chunked upload model. This model is abstract (doesn't create a table
@@ -26,7 +34,7 @@ class AbstractChunkedUpload(models.Model):
     upload_id = models.CharField(max_length=32, unique=True, editable=False,
                                  default=generate_upload_id)
     file = models.FileField(max_length=255, upload_to=UPLOAD_TO,
-                            storage=STORAGE)
+                            storage=get_storage)
     filename = models.CharField(max_length=255)
     offset = models.BigIntegerField(default=0)
     created_on = models.DateTimeField(auto_now_add=True)
