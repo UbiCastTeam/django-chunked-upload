@@ -1,11 +1,13 @@
 import datetime
-import time
+import errno
 from io import BytesIO
 from pathlib import Path
+import time
+from unittest.mock import patch
 
 import pytest
 
-from .conftest import run_management_command, get_response_json
+from .conftest import get_response_json, run_management_command
 
 
 def test_migrations():
@@ -52,20 +54,17 @@ def test_views__invalid_data(request_factory, user):
     pytest.param({'HTTP_CONTENT_RANGE': 'bytes 0-8/9'}, id='exact range'),
     pytest.param({'HTTP_CONTENT_RANGE': 'bytes 0-8/12'}, id='range with wrong total'),
 ])
-def test_views__single_chunk(request_factory, user, headers):
+def test_views__single_chunk(request_factory, tmp_dir, user, headers):
     from chunked_upload import models, views
     from chunked_upload.constants import COMPLETE
 
     upload_view = views.ChunkedUploadView.as_view()
     complete_view = views.ChunkedUploadCompleteView.as_view()
 
-    assert list(models.ChunkedUpload.objects.all()) == []
-
     # Send chunk
     fake_file = BytesIO(b'test data')
     fake_file.name = 'test-file.txt'
-    data = {'file': fake_file}
-    request = request_factory(user=user, method='post', data=data, **headers)
+    request = request_factory(user=user, method='post', data={'file': fake_file}, **headers)
     response = upload_view(request)
     content = get_response_json(response)
     assert response.status_code == 200, content
@@ -73,8 +72,7 @@ def test_views__single_chunk(request_factory, user, headers):
     upload_id = content['upload_id']
 
     # Call complete without size check
-    data = {'upload_id': upload_id}
-    request = request_factory(user=user, method='post', data=data)
+    request = request_factory(user=user, method='post', data={'upload_id': upload_id})
     response = complete_view(request)
     content = get_response_json(response)
     assert response.status_code == 200, content
@@ -86,29 +84,27 @@ def test_views__single_chunk(request_factory, user, headers):
     assert chk_up.status == COMPLETE
     assert chk_up.upload_id == upload_id
     assert chk_up.filename == fake_file.name
-    path = chk_up.file.path
-    with open(path, 'rb') as fo:
-        assert fo.read() == b'test data'
+    path = Path(chk_up.file.path)
+    assert path.read_bytes() == b'test data'
+    assert path.relative_to(tmp_dir)
 
     chk_up.delete()
     assert not Path(path).exists()
 
 
-def test_views__multiple_chunks(request_factory, user):
+def test_views__multiple_chunks(request_factory, tmp_dir, user):
     from chunked_upload import models, views
     from chunked_upload.constants import COMPLETE
 
     upload_view = views.ChunkedUploadView.as_view()
     complete_view = views.ChunkedUploadCompleteView.as_view()
 
-    assert list(models.ChunkedUpload.objects.all()) == []
-
     # Send chunk 1
     fake_file = BytesIO(b'test data')
     fake_file.name = 'initial-name.txt'
-    data = {'file': fake_file}
     request = request_factory(
-        user=user, method='post', data=data, HTTP_CONTENT_RANGE='bytes 0-8/14')
+        user=user, method='post', data={'file': fake_file}, HTTP_CONTENT_RANGE='bytes 0-8/14'
+    )
     response = upload_view(request)
     content = get_response_json(response)
     assert response.status_code == 200, content
@@ -118,9 +114,12 @@ def test_views__multiple_chunks(request_factory, user):
     # Send chunk 2
     fake_file = BytesIO(b'12345')
     fake_file.name = 'ignored-name.txt'
-    data = {'file': fake_file, 'upload_id': upload_id}
     request = request_factory(
-        user=user, method='post', data=data, HTTP_CONTENT_RANGE='bytes 9-13/14')
+        user=user,
+        method='post',
+        data={'file': fake_file, 'upload_id': upload_id},
+        HTTP_CONTENT_RANGE='bytes 9-13/14',
+    )
     response = upload_view(request)
     content = get_response_json(response)
     assert response.status_code == 200, content
@@ -141,29 +140,30 @@ def test_views__multiple_chunks(request_factory, user):
     assert chk_up.status == COMPLETE
     assert chk_up.upload_id == upload_id
     assert chk_up.filename == 'initial-name.txt'
-    path = chk_up.file.path
-    with open(path, 'rb') as fo:
-        assert fo.read() == b'test data12345'
+    path = Path(chk_up.file.path)
+    assert path.read_bytes() == b'test data12345'
+    assert path.relative_to(tmp_dir)
 
     chk_up.delete()
     assert not Path(path).exists()
 
 
-def test_views__wrong_offset(request_factory, user):
+def test_views__wrong_offset(request_factory, tmp_dir, user):
     from chunked_upload import models, views
     from chunked_upload.constants import UPLOADING
 
     upload_view = views.ChunkedUploadView.as_view()
 
-    assert list(models.ChunkedUpload.objects.all()) == []
-
     # Send chunk 1 with correct offset
     fake_file = BytesIO(b'test data')
     fake_file.name = 'initial-name.txt'
-    data = {'file': fake_file}
     fake_file.seek(0)
     request = request_factory(
-        user=user, method='post', data=data, HTTP_CONTENT_RANGE='bytes 0-8/14')
+        user=user,
+        method='post',
+        data={'file': fake_file},
+        HTTP_CONTENT_RANGE='bytes 0-8/14',
+    )
     response = upload_view(request)
     content = get_response_json(response)
     assert response.status_code == 200, content
@@ -177,9 +177,12 @@ def test_views__wrong_offset(request_factory, user):
     # Send chunk 2 with wrong offset
     fake_file = BytesIO(b'12345')
     fake_file.name = 'ignored-name.txt'
-    data = {'file': fake_file, 'upload_id': upload_id}
     request = request_factory(
-        user=user, method='post', data=data, HTTP_CONTENT_RANGE='bytes 7-11/14')
+        user=user,
+        method='post',
+        data={'file': fake_file, 'upload_id': upload_id},
+        HTTP_CONTENT_RANGE='bytes 7-11/14',
+    )
     response = upload_view(request)
     content = get_response_json(response)
     assert response.status_code == 400, content
@@ -190,21 +193,87 @@ def test_views__wrong_offset(request_factory, user):
         fo.write(b' 2')
     fake_file = BytesIO(b'12345')
     fake_file.name = 'ignored-name.txt'
-    data = {'file': fake_file, 'upload_id': upload_id}
     request = request_factory(
-        user=user, method='post', data=data, HTTP_CONTENT_RANGE='bytes 9-13/14')
+        user=user,
+        method='post',
+        data={'file': fake_file, 'upload_id': upload_id},
+        HTTP_CONTENT_RANGE='bytes 9-13/14',
+    )
     response = upload_view(request)
     content = get_response_json(response)
     assert response.status_code == 400, content
-    assert content == {'detail': 'File is currently being written by another request', 'size': 11}
+    assert content == {'detail': 'File has been written by another request', 'size': 11}
 
     chk_up.refresh_from_db()
     assert chk_up.status == UPLOADING
     assert chk_up.upload_id == upload_id
     assert chk_up.filename == 'initial-name.txt'
-    path = chk_up.file.path
-    with open(path, 'rb') as fo:
-        assert fo.read() == b'test data 2'
+    path = Path(chk_up.file.path)
+    assert path.read_bytes() == b'test data 2'
+    assert path.relative_to(tmp_dir)
+
+    chk_up.delete()
+
+
+@pytest.mark.parametrize('errno_id, expected_message', [
+    pytest.param(errno.EACCES, f'Failed to write file (errno {errno.EACCES})', id='access-denied'),
+    pytest.param(errno.ENOSPC, 'Not enough space left on storage', id='no-space'),
+])
+def test_views__os_error(request_factory, user, errno_id, expected_message):
+    from chunked_upload import models, views
+
+    upload_view = views.ChunkedUploadView.as_view()
+
+    # Send chunk 1
+    fake_file = BytesIO(b'test data')
+    fake_file.name = 'initial-name.txt'
+    fake_file.seek(0)
+    request = request_factory(
+        user=user,
+        method='post',
+        data={'file': fake_file},
+        HTTP_CONTENT_RANGE='bytes 0-8/14',
+    )
+
+    def raise_error(*args, **kwargs):
+        raise OSError(errno_id, 'An OS error has occurred')
+
+    with patch('chunked_upload.models.AbstractChunkedUpload.append_chunk', raise_error):
+        response = upload_view(request)
+    content = get_response_json(response)
+    assert response.status_code == 400, content
+    assert content['detail'] == expected_message
+
+    assert models.ChunkedUpload.objects.all().count() == 0
+
+
+def test_views__validation_error(request_factory, user):
+    from chunked_upload import models, views
+    from chunked_upload.exceptions import ChunkedUploadError
+
+    upload_view = views.ChunkedUploadView.as_view()
+
+    # Send chunk 1
+    fake_file = BytesIO(b'test data')
+    fake_file.name = 'initial-name.txt'
+    fake_file.seek(0)
+    request = request_factory(
+        user=user,
+        method='post',
+        data={'file': fake_file},
+        HTTP_CONTENT_RANGE='bytes 0-8/14',
+    )
+
+    def validation_error(*args, **kwargs):
+        raise ChunkedUploadError(status=400, detail='Failed')
+
+    with patch('chunked_upload.views.ChunkedUploadView.validate_chunk_data', validation_error):
+        response = upload_view(request)
+    content = get_response_json(response)
+    assert response.status_code == 400, content
+    assert content['detail'] == 'Failed'
+
+    assert models.ChunkedUpload.objects.all().count() == 0
 
 
 @pytest.mark.parametrize('expiration', [
@@ -213,22 +282,26 @@ def test_views__wrong_offset(request_factory, user):
 ])
 def test_cleaning(expiration):
     from chunked_upload import models
-    from chunked_upload.constants import UPLOADING, COMPLETE
+    from chunked_upload.constants import COMPLETE, UPLOADING
     from chunked_upload.management.commands import delete_expired_uploads
 
     if expiration:
         delete_expired_uploads.EXPIRATION_DELTA = expiration
 
-    models.ChunkedUpload.objects.bulk_create([
+    chk_ups = [
         models.ChunkedUpload(filename='test.1', status=UPLOADING),
         models.ChunkedUpload(filename='test.2', status=COMPLETE),
-    ])
+    ]
+    models.ChunkedUpload.objects.bulk_create(chk_ups)
     time.sleep(0.1)
 
     run_management_command('delete_expired_uploads')
 
-    chk_ups = list(models.ChunkedUpload.objects.values_list('filename', flat=True))
+    chk_ups_names = list(models.ChunkedUpload.objects.values_list('filename', flat=True))
     if expiration:
-        assert chk_ups == []
+        assert chk_ups_names == []
     else:
-        assert chk_ups == ['test.1', 'test.2']
+        assert chk_ups_names == ['test.1', 'test.2']
+
+    for chk_up in chk_ups:
+        chk_up.delete()

@@ -73,6 +73,7 @@ def django_setup(tmp_dir):
         },
         FILE_UPLOAD_MAX_MEMORY_SIZE=5_000,  # Bytes
         CHUNKED_UPLOAD_PATH='uploads/chunked',  # Relative path
+        CHUNKED_UPLOAD_STORAGE='django.core.files.storage.default_storage',
         LOGGING_CONFIG=None,
     )
 
@@ -85,6 +86,15 @@ def django_setup(tmp_dir):
 @pytest.fixture(autouse=True)
 def clear_db():
     run_management_command('flush', '--no-input')
+
+
+@pytest.fixture(autouse=True)
+def check_no_leftover(tmp_dir):
+    yield
+    assert not Path('uploads').exists()
+    up_dir = tmp_dir / 'uploads/chunked'
+    if up_dir.exists():
+        assert list(up_dir.iterdir()) == []
 
 
 @pytest.fixture()

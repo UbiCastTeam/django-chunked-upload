@@ -1,3 +1,4 @@
+import errno
 import re
 
 from django.views.generic import View
@@ -195,12 +196,13 @@ class ChunkedUploadView(ChunkedUploadBaseView):
 
         upload_id = request.POST.get('upload_id')
         if upload_id:
-            chunked_upload = get_object_or_404(self.get_queryset(request),
-                                               upload_id=upload_id)
+            chunked_upload = get_object_or_404(
+                self.get_queryset(request),
+                upload_id=upload_id,
+            )
             self.is_valid_chunked_upload(chunked_upload)
         else:
             attrs = {'filename': chunk.name}
-
             attrs.update(self.get_extra_attrs(request))
             chunked_upload = self.create_chunked_upload(save=False, **attrs)
 
@@ -252,17 +254,37 @@ class ChunkedUploadView(ChunkedUploadBaseView):
                 detail="File size doesn't match headers"
             )
 
-        self.validate_chunk_data(chunked_upload, chunk)
+        try:
+            self.validate_chunk_data(chunked_upload, chunk)
+        except ChunkedUploadError as err:
+            if not chunked_upload.id and chunked_upload.file is not None:
+                chunked_upload.file.delete(save=False)
+            raise err
 
         file_size = chunked_upload.get_size()
         if file_size != start:
+            if not chunked_upload.id and chunked_upload.file is not None:
+                chunked_upload.file.delete(save=False)
             raise ChunkedUploadError(
                 status=http_status.HTTP_400_BAD_REQUEST,
-                detail='File is currently being written by another request',
+                detail='File has been written by another request',
                 size=file_size
             )
 
-        chunked_upload.append_chunk(chunk, save=False)
+        try:
+            chunked_upload.append_chunk(chunk, save=False)
+        except OSError as err:
+            if not chunked_upload.id and chunked_upload.file is not None:
+                chunked_upload.file.delete(save=False)
+            if err.errno == errno.ENOSPC:
+                raise ChunkedUploadError(
+                    status=http_status.HTTP_400_BAD_REQUEST,
+                    detail='Not enough space left on storage'
+                )
+            raise ChunkedUploadError(
+                status=http_status.HTTP_400_BAD_REQUEST,
+                detail=f'Failed to write file (errno {err.errno})'
+            )
 
         self._save(chunked_upload)
 
