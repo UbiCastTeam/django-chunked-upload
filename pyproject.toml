@@ -45,3 +45,10 @@ include-package-data = false
 
 [tool.coverage.run]
 source_dirs = ["chunked_upload"]
+
+[tool.pytest.ini_options]
+addopts = "--verbose --tb=native --color=yes --durations=10"
+log_date_format = "%H:%M:%S"
+log_format = "%(asctime)s.%(msecs)03d pid:%(process)d %(name)s %(levelname)s %(message)s"
+norecursedirs = ".git"
+testpaths = ["tests/"]
